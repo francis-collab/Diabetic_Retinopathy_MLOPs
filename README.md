@@ -42,7 +42,7 @@ Diabetic_Retinopathy_MLOPs2/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── notebook/
-│   └── diabetic_retinopathy_mlops.ipynb   # DO NOT EDIT – contains 6 experiments
+│   └── diabetic_retinopathy_mlops.ipynb   
 ├── src/
 │   ├── preprocessing.py   # IMG_SIZE=128, same as notebook
 │   ├── model.py           # classical ML + CNN + fine_tune_keras_model
