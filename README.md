@@ -131,7 +131,7 @@ docker compose up --build --scale api=2
 | **4. Trigger retraining** | Button “Trigger Retraining” or `POST /retrain` – **fine-tunes the existing Advanced CNN** (custom pre-trained model) on original + new data |
 | **Model uptime** | Sidebar of Streamlit + `GET /health` |
 | **Locust flood simulation** | `locust/locustfile.py` (see section below) |
-| **Notebook** | 6 experiments, regularization / early stopping / class weights / transfer learning, ≥4 metrics, confusion matrices, learning curves, ROC curves. Best model selected by ROC-AUC. **Do not edit.** |
+| **Notebook** | 6 experiments, regularization / early stopping / class weights / transfer learning, ≥4 metrics, confusion matrices, learning curves, ROC curves. Best model selected by ROC-AUC. |
 
 ---
 
