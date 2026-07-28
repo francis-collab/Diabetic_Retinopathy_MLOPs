@@ -71,8 +71,9 @@ Diabetic_Retinopathy_MLOPs2/
 ## Setup (local)
 
 ```bash
-# 1. Clone / unzip and enter project
-cd Diabetic_Retinopathy_MLOPs2
+# 1. Clone the repo and switch to it
+git clone < Your_Repo_URL >
+cd Diabetic_Retinopathy_MLOPs
 
 # 2. Create virtual environment (Python 3.10 recommended)
 python3.10 -m venv venv
@@ -120,7 +121,7 @@ docker compose up --build --scale api=2
 
 ---
 
-## Functionalities (rubric checklist)
+## Functionalities
 
 | Requirement | How it is implemented |
 |-------------|------------------------|
@@ -134,7 +135,7 @@ docker compose up --build --scale api=2
 
 ---
 
-## Retraining flow (exactly as required)
+## Retraining flow 
 
 1. User uploads one or more fundus images + matching labels (`No_DR,Mild,...`).
 2. Images are **saved to disk** under `data/retrain_buffer/<label>/` (acts as the “database”).
@@ -145,8 +146,6 @@ docker compose up --build --scale api=2
    - Load the **existing** `best_model.keras` (Advanced CNN / MobileNetV2).
    - **Fine-tune** a few epochs with class weights + early stopping.
    - Save updated model & encoder → hot-reload into the API.
-
-This satisfies: *“uses a custom model created as a pre-trained model”*.
 
 ---
 
@@ -180,7 +179,7 @@ Paste screenshots / CSV summary tables into this README under “Results from Fl
 # on the VM
 sudo apt update && sudo apt install -y docker.io docker-compose git
 git clone <your-repo-url>
-cd Diabetic_Retinopathy_MLOPs2
+cd Diabetic_Retinopathy_MLOPs
 docker compose up --build -d
 ```
 
@@ -194,7 +193,7 @@ After deployment, record the public URL in the “Live URL” section above and 
 
 ---
 
-## Notebook summary (do not edit)
+## Notebook summary 
 
 The notebook (`notebook/diabetic_retinopathy_mlops.ipynb`) contains:
 
@@ -240,4 +239,5 @@ curl http://localhost:8000/dataset_stats
 
 - The production prediction path uses **exactly the same preprocessing** as the notebook (RGB, 128×128, /255).
 - Retraining fine-tunes the **same** Advanced CNN that was selected as best in the notebook.
-- All rubric items (prediction, visualizations + interpretations, upload, trigger retrain, uptime, Locust, Docker, notebook metrics) are covered.
+
+Done by **Francis Mutabazi** , an aspiring Machine Learning Engineer
