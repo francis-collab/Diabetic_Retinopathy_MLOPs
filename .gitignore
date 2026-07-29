@@ -1,0 +1,11 @@
+mlpip_summative/
+venv/
+.venv/
+wheels/
+**/__pycache__/
+**/*.pyc
+*.zip
+.env
+.DS_Store
+results_*container*
+results_*containers*

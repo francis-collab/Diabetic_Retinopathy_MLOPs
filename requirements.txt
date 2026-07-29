@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+streamlit
+scikit-learn
+joblib
+numpy
+pillow
+pandas
+matplotlib
+seaborn
+xgboost
+python-multipart
+requests
+locust
+tensorflow==2.13.1

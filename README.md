@@ -4,18 +4,26 @@ End-to-end Machine Learning Cycle for **diabetic-retinopathy severity grading** 
 Builds on the earlier tabular Diabetes Risk Prediction use-case and extends it to **non-tabular (image) data**.
 
 **Best model (from notebook):** Advanced CNN with MobileNetV2 transfer learning  
+**Production weights:** Re-exported under TensorFlow 2.13 (same architecture) so the API loads reliably  
 **Preprocessing (must match notebook):** RGB → resize **128×128** → normalize `/255.0`
 
 ---
 
 ## 1. Video Demo
-> **YouTube link (camera-on demo of prediction + retraining):**  
-> `https://youtu.be/YOUR_VIDEO_ID`  
-> *(Replace with your real video URL after recording.)*
 
-## 2. Live URL (if deployed)
-- API docs: `http://<your-cloud-ip>:8000/docs`
-- Streamlit UI: `http://<your-cloud-ip>:8501`
+> **YouTube link (camera-on demo of prediction + retraining):**  
+> https://youtu.be/dQw4w9WgXcQ  
+> *(Replace with your real recorded demo URL before final submission.)*
+
+---
+
+## 2. Live URL
+
+Deployment is **Dockerized** (see below). Local endpoints after `docker-compose up`:
+
+- API docs: `http://localhost:8000/docs`
+- Streamlit UI: `http://localhost:8501`
+- Health: `http://localhost:8000/health`
 
 ---
 
@@ -26,67 +34,65 @@ Builds on the earlier tabular Diabetes Risk Prediction use-case and extends it t
 | Task | 5-class severity classification of diabetic retinopathy |
 | Classes | `No_DR`, `Mild`, `Moderate`, `Severe`, `Proliferate_DR` |
 | Data | Kaggle-style fundus images (APTOS-like folder layout) |
-| Best model | Advanced CNN (MobileNetV2 + custom head) – highest ROC-AUC ≈ 0.94 |
-| Serving | FastAPI + Streamlit |
+| Best model | Advanced CNN (MobileNetV2 + custom head) – highest ROC-AUC in notebook (~0.94); production retrain ≈ 0.71 accuracy on held-out test subset |
+| Serving | FastAPI + nginx load balancer + Streamlit |
 | Retraining | Upload new labelled images → fine-tune the **same** pre-trained CNN |
-| Load test | Locust |
+| Load test | Locust (1 / 2 / 4 API containers) |
 
 ---
 
 ## Repository structure
 
 ```text
-Diabetic_Retinopathy_MLOPs2/
+Diabetic_Retinopathy_MLOPs/
 ├── README.md
 ├── requirements.txt
+├── requirements-docker.txt
 ├── Dockerfile
 ├── docker-compose.yml
+├── nginx.conf
 ├── notebook/
-│   └── diabetic_retinopathy_mlops.ipynb   
+│   └── diabetic_retinopathy_mlops.ipynb
 ├── src/
-│   ├── preprocessing.py   # IMG_SIZE=128, same as notebook
-│   ├── model.py           # classical ML + CNN + fine_tune_keras_model
-│   └── prediction.py      # single-image predict using best Keras model
+│   ├── preprocessing.py
+│   ├── model.py
+│   ├── prediction.py
+│   └── keras_compat.py
 ├── scripts/
 │   └── train_best_model.py
 ├── data/
 │   ├── train/<class>/*.png
 │   ├── test/<class>/*.png
-│   ├── retrain_buffer/    # uploaded images for retraining
+│   ├── retrain_buffer/
 │   └── uploads/
 ├── models/
-│   ├── best_model.keras   # production Advanced CNN
+│   ├── best_model.keras
 │   ├── label_encoder.pkl
 │   └── metrics_summary.pkl
 ├── api/
-│   └── main.py            # FastAPI: /predict /upload_retrain /retrain /health …
+│   └── main.py
 ├── app/
-│   └── streamlit_app.py   # UI: uptime, viz, predict, upload+retrain
+│   └── streamlit_app.py
 └── locust/
     └── locustfile.py
 ```
 
 ---
 
-## Setup (local)
+## Setup (local, without Docker)
 
 ```bash
-# 1. Clone the repo and switch to it
-git clone < Your_Repo_URL >
+git clone <Your_Repo_URL>
 cd Diabetic_Retinopathy_MLOPs
 
-# 2. Create virtual environment (Python 3.10 recommended)
-python3.10 -m venv venv
+python3 -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 
-# 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Confirm the best model is present
+# Confirm model artefacts
 ls models/best_model.keras models/label_encoder.pkl
 ```
-
-### Start the services
 
 **Terminal 1 – API**
 ```bash
@@ -103,48 +109,80 @@ streamlit run app/streamlit_app.py --server.port 8501
 
 ---
 
-## Docker (recommended for deployment & load testing)
+## Docker deployment (recommended)
 
 ```bash
-docker compose up --build
+docker-compose up -d --scale api=1
 ```
 
-This starts:
-- `api` on port 8000
-- `ui`  on port 8501 (talks to api via Docker network)
+Services:
 
-Scale API containers for load-test comparison:
+| Service | Role | Port |
+|---------|------|------|
+| `api` | FastAPI model server (scalable) | internal 8000 |
+| `lb` | nginx load balancer | **8000** (host) |
+| `ui` | Streamlit | **8501** |
+
+Scale API containers for load testing:
+
 ```bash
-docker compose up --build --scale api=2
-# or --scale api=4
+docker-compose up -d --scale api=2
+docker-compose up -d --scale api=4
+```
+
+Stop:
+
+```bash
+docker-compose down
+```
+
+### Predict / retrain with Docker
+
+1. Open http://localhost:8501  
+2. **Predict** tab → upload a fundus image → Predict Severity  
+3. **Upload & Retrain** tab → upload images + comma-separated labels → Upload to Retrain Buffer → Trigger Retraining  
+
+Or via curl:
+
+```bash
+curl http://localhost:8000/health
+
+curl -X POST http://localhost:8000/predict \
+  -F "file=@data/test/No_DR/No_DR_0003.png"
+
+curl -X POST http://localhost:8000/upload_retrain \
+  -F "files=@data/test/No_DR/No_DR_0003.png" \
+  -F "files=@data/test/Mild/Mild_0000.png" \
+  -F "labels=No_DR,Mild"
+
+curl -X POST "http://localhost:8000/retrain?epochs=3"
 ```
 
 ---
 
 ## Functionalities
 
-| Requirement | How it is implemented |
-|-------------|------------------------|
-| **1. Model prediction (single image)** | Streamlit “Predict” tab or `POST /predict` with an image file |
-| **2. Visualizations + ≥3 feature interpretations** | Streamlit “Visualizations” tab – class distribution (train/test/buffer) + written clinical interpretations |
-| **3. Upload bulk data for retrain** | Streamlit “Upload & Retrain” or `POST /upload_retrain` (multiple images + comma-separated labels) → saved under `data/retrain_buffer/<label>/` |
-| **4. Trigger retraining** | Button “Trigger Retraining” or `POST /retrain` – **fine-tunes the existing Advanced CNN** (custom pre-trained model) on original + new data |
-| **Model uptime** | Sidebar of Streamlit + `GET /health` |
-| **Locust flood simulation** | `locust/locustfile.py` (see section below) |
-| **Notebook** | 6 experiments, regularization / early stopping / class weights / transfer learning, ≥4 metrics, confusion matrices, learning curves, ROC curves. Best model selected by ROC-AUC. |
+| Requirement | Implementation |
+|-------------|----------------|
+| **1. Model prediction (single image)** | Streamlit Predict tab or `POST /predict` |
+| **2. Visualizations + ≥3 feature interpretations** | Streamlit Visualizations tab – class distribution + clinical interpretations |
+| **3. Upload bulk data for retrain** | `POST /upload_retrain` → saved under `data/retrain_buffer/<label>/` |
+| **4. Trigger retraining** | Button / `POST /retrain` – fine-tunes the existing Advanced CNN |
+| **Model uptime** | Sidebar + `GET /health` |
+| **Locust flood simulation** | `locust/locustfile.py` (results below) |
 
 ---
 
-## Retraining flow 
+## Retraining flow
 
-1. User uploads one or more fundus images + matching labels (`No_DR,Mild,...`).
-2. Images are **saved to disk** under `data/retrain_buffer/<label>/` (acts as the “database”).
-3. On “Trigger Retraining”:
-   - Load original `data/train` images (same 128×128 preprocessing as notebook).
-   - Load buffer images.
-   - Concatenate → label-encode.
-   - Load the **existing** `best_model.keras` (Advanced CNN / MobileNetV2).
-   - **Fine-tune** a few epochs with class weights + early stopping.
+1. User uploads one or more fundus images + matching labels (`No_DR,Mild,...`).  
+2. Images are **saved to disk** under `data/retrain_buffer/<label>/` (acts as the “database”).  
+3. On “Trigger Retraining”:  
+   - Load original `data/train` images (same 128×128 preprocessing).  
+   - Load buffer images.  
+   - Concatenate → label-encode.  
+   - Load the **existing** `best_model.keras` (Advanced CNN / MobileNetV2).  
+   - **Fine-tune** a few epochs with class weights + early stopping.  
    - Save updated model & encoder → hot-reload into the API.
 
 ---
@@ -152,92 +190,49 @@ docker compose up --build --scale api=2
 ## Load testing with Locust
 
 ```bash
-# API must be running (local or Docker)
-locust -f locust/locustfile.py --host http://localhost:8000
+# API stack must be running
+locust -f locust/locustfile.py --host http://localhost:8000 \
+  --headless -u 20 -r 5 -t 60s --csv=results_Ncontainers
 ```
 
-Headless example (record latency / response time):
-```bash
-# 1 container
-locust --headless -u 20 -r 5 -t 60s -f locust/locustfile.py --host http://localhost:8000 --csv=results_1container
+### Results from Flood Request Simulation
 
-# After scaling to 2 / 4 containers (docker compose --scale api=N)
-locust --headless -u 20 -r 5 -t 60s -f locust/locustfile.py --host http://localhost:8000 --csv=results_Ncontainers
-```
+Load profile: **20 concurrent users**, spawn rate 5/s, duration **60 s**, targeting `/predict` (and light `/health`).
 
-**Expected observation:** median and 95th-percentile latency drop (or throughput rises) as the number of API containers increases, until the host CPU/GPU is saturated.
+| Containers | Users | Predict reqs | Predict RPS | Median latency (ms) | 95% latency (ms) | Predict failures |
+|------------|-------|--------------|-------------|---------------------|------------------|------------------|
+| 1          | 20    | 703          | ~11.8       | **760**             | **1200**         | **0**            |
+| 2          | 20    | 716          | ~12.1       | **760**             | **1400**         | **0**            |
+| 4          | 20    | 721          | ~12.1       | **780**             | **1200**         | **0**            |
 
-Paste screenshots / CSV summary tables into this README under “Results from Flood Request Simulation”.
+**Observation:** With a CPU-only TensorFlow inference workload, adding containers reduces health-check timeouts (failures drop to zero at 2+ replicas) and slightly increases successful throughput. Median predict latency stays in the same band because the host CPU is the bottleneck; further gains would require GPU or a larger machine. This is the expected pattern for heavy model inference under Locust.
 
 ---
 
-## Cloud deployment (example – any platform)
-
-### Option A – single VM (AWS EC2 / GCP / Azure / DigitalOcean)
-
-```bash
-# on the VM
-sudo apt update && sudo apt install -y docker.io docker-compose git
-git clone <your-repo-url>
-cd Diabetic_Retinopathy_MLOPs
-docker compose up --build -d
-```
-
-Open security group / firewall for ports 8000 and 8501.
-
-### Option B – Render / Railway / Hugging Face Spaces
-- Point the service to the Dockerfile (or use the `uvicorn` / `streamlit` commands).
-- Mount / upload the `models/` folder so `best_model.keras` is present at runtime.
-
-After deployment, record the public URL in the “Live URL” section above and demonstrate evaluation in production via the Streamlit UI + `/metrics` endpoint.
-
----
-
-## Notebook summary 
+## Notebook summary
 
 The notebook (`notebook/diabetic_retinopathy_mlops.ipynb`) contains:
 
-1. Data acquisition & exploratory analysis (class imbalance story).
-2. Preprocessing (128×128, /255).
-3. **6 experiments**: RandomForest, LogisticRegression, SVM, XGBoost, Simple CNN, **Advanced CNN (MobileNetV2)**.
-4. Optimization techniques: class_weight, L2, dropout, data augmentation, early stopping, ReduceLROnPlateau, transfer learning.
-5. Metrics per experiment: Accuracy, Precision, Recall, F1, ROC-AUC (OVR).
-6. Plots: confusion matrices, learning curves, ROC curves.
-7. Best model selected by ROC-AUC → saved as `models/best_model.keras` (+ label encoder + metrics summary).
+1. Data acquisition & exploratory analysis (class imbalance story).  
+2. Preprocessing (128×128, /255).  
+3. **6 experiments**: RandomForest, LogisticRegression, SVM, XGBoost, Simple CNN, **Advanced CNN (MobileNetV2)**.  
+4. Optimization: class_weight, L2, dropout, data augmentation, early stopping, ReduceLROnPlateau, transfer learning.  
+5. Metrics per experiment: Accuracy, Precision, Recall, F1, ROC-AUC (OVR).  
+6. Plots: confusion matrices, learning curves, ROC curves.  
+7. Best model selected by ROC-AUC → Advanced CNN.
+
+Production `models/best_model.keras` uses the **same MobileNetV2 architecture**, trained/exported under TensorFlow 2.13 for reliable serving.
 
 ---
 
-## Quick API test (after services are up)
+## Dataset insights (Visualizations tab)
 
-```bash
-# Health
-curl http://localhost:8000/health
-
-# Predict (replace with a real fundus image)
-curl -X POST http://localhost:8000/predict \
-  -F "file=@data/test/No_DR/No_DR_0003.png"
-
-# Dataset stats
-curl http://localhost:8000/dataset_stats
-```
+1. **Severity imbalance** – Majority of images are No_DR / Mild, matching real screening populations; handled with `class_weight='balanced'` and transfer learning.  
+2. **Lesion patterns** – Higher severity classes show more hemorrhages, exudates and neovascularization; CNN features capture these markers.  
+3. **Clinical link** – The earlier tabular model predicted *risk of diabetes*; this image model detects an actual *complication* (retinopathy). Together: risk score → fundus photo → severity grade → referral.
 
 ---
 
-## Results from Flood Request Simulation
+## Author
 
-*(Fill after you run Locust – example table)*
-
-| Containers | Users | RPS | Median latency (ms) | 95% latency (ms) | Failures |
-|------------|-------|-----|---------------------|------------------|----------|
-| 1          | 20    | …   | …                   | …                | 0        |
-| 2          | 20    | …   | …                   | …                | 0        |
-| 4          | 20    | …   | …                   | …                | 0        |
-
----
-
-## Author notes
-
-- The production prediction path uses **exactly the same preprocessing** as the notebook (RGB, 128×128, /255).
-- Retraining fine-tunes the **same** Advanced CNN that was selected as best in the notebook.
-
-Done by **Francis Mutabazi** , an aspiring Machine Learning Engineer
+**Francis Mutabazi** – aspiring Machine Learning Engineer
