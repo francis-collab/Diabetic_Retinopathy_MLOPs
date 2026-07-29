@@ -22,9 +22,6 @@ COPY src/          ./src/
 COPY models/       ./models/
 COPY data/         ./data/
 COPY scripts/      ./scripts/
-
-# locust folder is optional – only copy if it exists on the host
-# (create an empty locust/ dir first if you don't have one yet)
 COPY locust/       ./locust/
 
 ENV PYTHONPATH=/app

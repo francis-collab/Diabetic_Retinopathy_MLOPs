@@ -1,6 +1,6 @@
 """
 Preprocessing for Diabetic Retinopathy image classification.
-Must match the notebook: RGB, resize to IMG_SIZE=128, normalize /255.0
+Matching the notebook: RGB, resize to IMG_SIZE=128, normalize /255.0
 Works with folder structure: data/train/<class>/*.png|jpg
 """
 import os
