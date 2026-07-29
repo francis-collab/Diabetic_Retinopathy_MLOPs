@@ -9,3 +9,14 @@ wheels/
 .DS_Store
 results_*container*
 results_*containers*
+# large image data – keep only a tiny sample in the repo
+data/train/**/*.png
+data/train/**/*.jpg
+data/train/**/*.jpeg
+data/test/**/*.png
+data/test/**/*.jpg
+data/test/**/*.jpeg
+data/uploads/**
+data/retrain_buffer/**
+!data/train/.gitkeep
+!data/test/.gitkeep
