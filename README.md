@@ -111,7 +111,7 @@ streamlit run app/streamlit_app.py --server.port 8501
 
 Full fundus dataset is not stored in GitHub (size). Download the APTOS-style images from Kaggle and place them under data/train/<class>/ and data/test/<class>/. A few sample images may be included for smoke tests.
 
-## Docker deployment (recommended)
+## Docker deployment
 
 ```bash
 docker-compose up -d --scale api=1
