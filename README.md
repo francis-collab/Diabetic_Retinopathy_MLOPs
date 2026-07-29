@@ -5,15 +5,15 @@ Builds on the earlier tabular Diabetes Risk Prediction use-case and extends it t
 
 **Best model (from notebook):** Advanced CNN with MobileNetV2 transfer learning  
 **Production weights:** Re-exported under TensorFlow 2.13 (same architecture) so the API loads reliably  
-**Preprocessing (must match notebook):** RGB → resize **128×128** → normalize `/255.0`
+**Preprocessing (matches notebook):** RGB → resize **128×128** → normalize `/255.0`
 
 ---
 
 ## 1. Video Demo
 
-> **YouTube link (camera-on demo of prediction + retraining):**  
-> https://youtu.be/dQw4w9WgXcQ  
-> *(Replace with your real recorded demo URL before final submission.)*
+> **YouTube link:**  
+> https://youtu.be/vfRVARsZ854  
+
 
 ---
 
